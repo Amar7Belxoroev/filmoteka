@@ -1,0 +1,29 @@
+version: '3.9'
+
+services:
+  backend:
+    image: filmoteka_app
+    container_name: flask
+    build: ./services/backend
+    command: python manage.py run -h 0.0.0.0
+    volumes:
+      - ./services/backend/:/usr/src/app/
+    ports:
+      - "5001:5000"
+    env_file:
+      - ./.env.dev
+  postgres:
+    image: postgres:latest
+    volumes:
+      - postgres_data:/var/lib/postgresql/data/
+    environment:
+      - POSTGRES_USER=admin
+      - POSTGRES_PASSWORD=admin
+      - POSTGRES_DB=filmoteka_db
+  frontend:
+    build: ./services/frontend
+    command: yarn start
+    ports:
+      - "3005:3000"
+volumes:
+  postgres_data:

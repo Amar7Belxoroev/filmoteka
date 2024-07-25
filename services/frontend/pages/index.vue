@@ -31,9 +31,8 @@
         class="h-6 w-6 absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400"
       ></SearchFilter>
     </div>
-    <q-infinite-scroll @load="onLoad" :offset="250" :disable="movies.length<=0"
-      class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-12 mt-8"
-    >
+    <div
+      class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-12 mt-8">
        <div
         v-for="movie in sortedMovies"
         :key="movie.id"
@@ -50,11 +49,11 @@
             <h2 class="text-xl font-semibold mb-1 text-white">
               {{ movie.name }}
             </h2>
-            <h2 class="text-sm text-gray-300">{{ movie.year }}</h2>
+            <h2 class="text-md text-gray-300">{{ movie.year }}</h2>
           </div>
         </div>
         <div class="p-4 flex-grow flex flex-col justify-between">
-          <p class="text-gray-300 text-sm mb-4 line-clamp-3">
+          <p class="text-gray-300 text-md mb-4 line-clamp-3">
             {{
               movie.shortDescription
                 ? movie.shortDescription
@@ -62,7 +61,7 @@
             }}
           </p>
           <div class="flex justify-between items-center">
-            <span class="text-yellow-500"
+            <span class="text-yellow-500 text-lg"
               >★
               {{
                 movie.rating?.kp?.toFixed(1)
@@ -81,13 +80,21 @@
         </div>
       </div>
 
-      <template v-slot:loading>
-        <div class="row justify-center q-my-md">
-          <q-spinner-dots color="primary" size="40px" />
-        </div>
-      </template>
-  
-    </q-infinite-scroll>
+
+    </div>
+    <div class=" flex flex-row mt-20 items-center justify-center">
+      <q-pagination
+      v-if="movies.length>0"
+      @update:model-value="(v)=>{$router.push({path: $route.path,
+          query: { page: v, searchQuery: searchQuery }}); currentPage=v; updateQuery()}"
+      v-model="currentPage"
+      text-color="white"
+      color="blue"
+      :max="maxPages"
+      :max-pages="6"
+      :boundary-numbers="false"
+      />
+    </div>
     <q-ajax-bar
       ref="bar"
       position="bottom"
@@ -103,7 +110,9 @@ import {MoviesService} from "~/services/moviesService"
 export default {
   data() {
     return {
-      moviesService: new MoviesService(),
+      currentPage: 1,
+      maxPages: 1,
+      moviesService: new MoviesService(1),
       movies: [],
       filteredMovies: [],
       searchQuery: "",
@@ -121,7 +130,6 @@ export default {
     watch(() => this.$route.query.searchQuery, () => {
       this.updateQuery()
     })
-    console.log(await $fetch("http://localhost:5001"))
    // if(this.$route.query.searchQuery)
     await nextTick(async ()=>{await this.updateQuery()})
     console.log(useApiFetch.prototype)
@@ -137,20 +145,25 @@ export default {
       console.log(this.$router.currentRoute.value.query)
     },
     async searchMovies() {
+      this.moviesService.page = this.currentPage
       const barRef = this.$refs.bar;
       
       barRef.start();
       if (this.searchQuery == "") {
-         this.movies = await this.moviesService.SearchMoviesByFilter(this.filterObject)
+        let res = await this.moviesService.SearchMoviesByFilter(this.filterObject)
+         this.movies = res.docs
+         this.maxPages = res.pages
           barRef.stop();
           return;
         }
 
-        this.movies = await this.moviesService.SearchMoviesByQeury(this.searchQuery)
+        let res = await this.moviesService.SearchMoviesByQeury(this.searchQuery)
+        this.movies = res.docs
+        this.maxPages = res.pages
         
         this.$router.push({
           path: this.$route.path,
-          query: { searchQuery: this.searchQuery },
+          query: { searchQuery: this.searchQuery, page: this.currentPage, },
         });
         barRef.stop();
       },
@@ -162,15 +175,23 @@ export default {
     computed:{
       sortedMovies()
       {
-        if(!this.movies)
-        return
-        console.log(this.movies)
         let filter = this.filterObject
         this.filteredMovies = this.movies.filter((m)=>{
           return m.rating.kp >= filter.ratingRange.min && 
           m.rating.kp <= filter.ratingRange.max &&
           m.year >= filter.yearsRange.min &&
-          m.year <= filter.yearsRange.max 
+          m.year <= filter.yearsRange.max &&
+          m.poster.url &&
+          m.description &&
+          m.name
+        })
+        if(this.filterObject.genre!="Все жанры")
+        this.filteredMovies = this.filteredMovies.filter((m)=>{
+          return m.genres.some(g=>g.name.toLowerCase()==this.filterObject.genre.toLowerCase())
+        })
+        if(this.filterObject.countries!="Все страны")
+        this.filteredMovies = this.filteredMovies.filter((m)=>{
+          return m.countries.some(с=>с.name.toLowerCase()==this.filterObject.countries.toLowerCase())
         })
         if(this.filterObject.sortBy=="По рейтингу")
         {

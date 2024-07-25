@@ -1,11 +1,15 @@
 export class MoviesService
 {
- 
+    page = 0
+ constructor(page)
+ {
+    this.page = page
+ }
     async SearchMoviesByQeury(searchQuery) {
         console.log(useApiFetch.prototype)
           let object = (
-          await useApiFetch("/movie/search?query=" + searchQuery)
-          ).data.value.docs
+          await useApiFetch(`/movie/search?query=${searchQuery}&page=${this.page}`)
+          ).data.value
           console.log(object)
           return object
 
@@ -20,8 +24,8 @@ export class MoviesService
         if (filter.countries != "Все страны")
         queryParams += `countries.name=${filter.countries}&`;
         queryParams += `movieLength=${filter.movieLength.min}-${filter.movieLength.max}`;
-        let object = (await useApiFetch("/movie?page=1&limit=10&" + queryParams)).data.value;
-            return object.docs;
+        let object = (await useApiFetch(`/movie?page=${this.page}&limit=10&${queryParams}`)).data.value;
+            return object;
     }
     async GetTop250()
     {
